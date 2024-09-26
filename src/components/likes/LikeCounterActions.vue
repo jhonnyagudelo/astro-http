@@ -1,44 +1,41 @@
 <template>
-
   <div v-if="isLoading">
     <h5>Loading....</h5>
   </div>
-
   <button v-else-if='likeCount === 0' @click='likePost'>
     like Counter
   </button>
-
   <button v-else @click='likePost'>
     Likes <span>{{ likeCount }}</span>
   </button>
 </template>
 
 <script lang='ts' setup>
+import { actions } from 'astro:actions';
 import { ref, watch } from 'vue'
 import confetti from 'canvas-confetti'
 import debounce from 'lodash.debounce'
 
-
 interface Props {
   postId: string;
 }
-const props = defineProps<Props>();
 
+const props = defineProps<Props>();
 const likeCount = ref(0)
 const likeClick = ref(0)
 const isLoading = ref(true)
 
 watch(likeCount, debounce(() => {
-  fetch(`/api/posts/likes/${props?.postId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ likes: likeClick.value })
-  })
+  try {
+    actions.updatePostLikes({
+      postId: props?.postId,
+      likes: likeClick.value
+    })
+  } catch (error) {
+    console.error(error)
+  }
   likeClick.value = 0
 }, 500));
-
 
 const likePost = () => {
   likeCount.value++
@@ -55,19 +52,13 @@ const likePost = () => {
   });
 }
 
-
-
 const getCurrentLikes = async () => {
-  const resp = await fetch(`/api/posts/likes/${props?.postId}`)
-  if (!resp.ok) return;
-  const data = await resp.json()
-  likeCount.value = data.likes
+  const { likes } = await actions.getPostLikes(props.postId);
+  likeCount.value = likes
   isLoading.value = false
 }
 
 getCurrentLikes()
-
-
 </script>
 
 <style scoped>
